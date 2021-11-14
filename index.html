@@ -1,0 +1,279 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="author" content="colorlib.com">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:400,600,700" rel="stylesheet" />
+    <link href="css/main.css" rel="stylesheet" />
+  </head>
+  <body style="background-color: #eee;">
+    <span style="position: absolute; top: 20px; right: 30px; font-size: 18px;" id="nbhits"></span>
+    <div id="searchdiv" class="s010 fullpage">
+      <form>
+        <div class="inner-form">
+          <div class="basic-search">
+            <div class="input-field">
+              <input id="search" type="text" placeholder="Type Keywords" />
+              <div class="icon-wrap">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                  <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
+                </svg>
+              </div>
+            </div>
+            <div id="suggestions"></div>
+          </div>
+          <a href="#" id="show-filters">Show / Hide Filters</a>
+          <div class="advance-search hide-search">
+            <span class="desc">ADVANCED SEARCH</span>
+            <div class="row">
+              <div class="input-field">
+                <div class="input-select">
+                  <select id="genres-filter" data-trigger="" name="choices-single-defaul">
+                    <option placeholder="" value="">Genres</option>
+                  </select>
+                </div>
+              </div>
+              <div class="input-field">
+                <div class="input-select">
+                  <select id="keywords-filter" data-trigger="" name="choices-single-defaul">
+                    <option placeholder="" value="">Keywords</option>
+                  </select>
+                </div>
+              </div>
+              <div class="input-field">
+                <div class="input-select">
+                  <select id="status-filter" data-trigger="" name="choices-single-defaul">
+                    <option placeholder="" value="">Status</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="row second">
+              <div class="input-field">
+                <div class="input-select">
+                  <select id="vote_average-filter" data-trigger="" name="choices-single-defaul">
+                    <option placeholder="" value="">Votes</option>
+                  </select>
+                </div>
+              </div>
+              <div class="input-field">
+                <div class="input-select">
+                  <select id="decade-filter" data-trigger="" name="choices-single-defaul">
+                    <option placeholder="" value="">Release Year</option>
+                  </select>
+                </div>
+              </div>
+              <div class="input-field">
+                <div class="input-select">
+                  <select id="runtime-filter" data-trigger="" name="choices-single-defaul">
+                    <option placeholder="" value="">Duration</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="row third">
+              <div class="input-field">
+                <div class="result-count"></div>
+                <div class="group-btn">
+                  <button class="btn-delete" id="delete">RESET</button>
+                  <button class="btn-search" id="btn-search">SEARCH</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div id="resultsdiv" style="display: none;">
+
+    </div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+
+    <script src="js/extention/choices.js"></script>
+    <script>
+	    function initPage(){
+	 
+      const customSelects = document.querySelectorAll("select");
+      const deleteBtn = document.getElementById('delete')
+      const choices = new Choices('select',
+      {
+        searchEnabled: false,
+        itemSelectText: '',
+        removeItemButton: true,
+      });
+      for (let i = 0; i < customSelects.length; i++)
+      {
+        customSelects[i].addEventListener('addItem', function(event)
+        {
+          if (event.detail.value)
+          {
+            let parent = this.parentNode.parentNode
+            parent.classList.add('valid')
+            parent.classList.remove('invalid')
+          }
+          else
+          {
+            let parent = this.parentNode.parentNode
+            parent.classList.add('invalid')
+            parent.classList.remove('valid')
+          }
+        }, false);
+      }
+      deleteBtn.addEventListener("click", function(e)
+      {
+        e.preventDefault()
+        const deleteAll = document.querySelectorAll('.choices__button')
+        for (let i = 0; i < deleteAll.length; i++)
+        {
+          deleteAll[i].click();
+        }
+      });
+}
+
+    rangesDict = []
+
+    function getFilters(){
+      var filters = [];
+      $("select").each(function(){
+        var e = $(this).val();
+        filtername = $(this).attr("id").replace("-filter","")
+        if(e != ''){
+          var filterVal = e.split("(")[0].trim()
+          if(rangesDict[filterVal] != undefined){
+            filterVal = rangesDict[filterVal]
+            filters.push({"key": filtername, "from": filterVal["from"], "to": filterVal["to"]})
+          } else {
+          filters.push({"key": filtername, "value": filterVal})
+        }}
+      })
+      return filters;
+    }
+
+    function appendCard(hit){
+
+      var source = hit["_source"]
+      var title = source["title"]
+      var voteAvg = source["vote_average"]
+      var nbVotes = source["vote_count"]
+
+      var tagline = source["tagline"]
+      var overview = source["overview"]
+
+      var releaseDate = source["release_date"]
+      var runtime = source["runtime"]
+
+      var genres = source["genres"].map(function(g){ return g.name }).join(" - ")
+
+      var cast = source["cast"]
+      var crew = source["crew"]
+
+
+      var row1 = "<tr><td class='movie-title'>"+title+"</td><td style='text-align: right'>"+voteAvg+"/10 <i>("+nbVotes+" votes)</i></td></tr>"
+      var row2 = "<tr><td><b>Released on</b> : "+releaseDate+"</td><td style='text-align: right'><b>Duration</b> : "+runtime+" minutes</td></tr>"
+      var row3 = "<tr><td colspan='2'>"+tagline+"</td></tr>"
+      var row4 = "<tr><td colspan='2'>"+overview+"</td></tr>"
+      var row5 = "<tr><td colspan='2'><b>Genres</b> : "+genres+"</td></tr>"
+
+      var cardHtml = "<div class='movie-card'><table>"+row1+row2+row3+row4+row5+"</table></div>"
+
+      $("#resultsdiv").append(cardHtml)
+    }
+
+    function search(){
+        $("#searchdiv").removeClass("fullpage")
+        $("#resultsdiv").css("display","block")
+        var fulltext = $("#search").val()
+        var filters = getFilters()
+        
+        $.ajax({
+            type: "POST",
+            url: "/search",
+            contentType: "application/json",
+            data: JSON.stringify({"search": fulltext, "filters": filters}),
+            success: function(response){
+              $("#nbhits").html(response["total"]["value"]+" Hits")
+              $(".result-count").html("<span>"+response["total"]["value"]+" </span>results")
+              $("#resultsdiv").html("")
+              response["hits"].forEach(h => appendCard(h))
+            }
+          });
+
+    }
+
+    $.ajax({
+      type: "GET",
+      url: "/aggs",
+      success: function(response){
+        rangesDict = []
+        for (const element in response){
+          for(const k in response[element]){
+            var entry = response[element][k]
+            if(entry.from != undefined || entry.to != undefined){
+              rangesDict[entry.key] = entry
+            }
+            $("#"+element+"-filter").append("<option val='"+entry.key+"'>"+entry.key+" ("+entry.doc_count+")</option>")
+          }
+        }
+        initPage();
+      }
+    });
+
+
+  var xhr;
+
+	$("#search").on("keypress", function(e){
+    var p = e.which;
+     if(p==13){
+         search();
+     }
+      else {
+        searchExpression = $("#search").val();
+        var filters = getFilters()
+        if(xhr != undefined){
+          xhr.abort()
+        }
+        xhr = $.ajax({
+          type: "POST",
+          url: "/suggest",
+          contentType: "application/json",
+          data: JSON.stringify({"search": searchExpression, "filters": filters}),
+            success: function(response){
+              $("#suggestions").html("")
+              var suggestions = [];
+              var data = JSON.parse(response)
+              for (const i in data){
+                for (const key in data[i]){
+                  var entry = data[i][key]
+                  for (const j in entry){
+                    var suggestion = entry[j]
+                    if(suggestions.length < 10 && suggestions.indexOf(suggestion) == -1 && suggestion.replace("<em>","").replace("</em>","").toLowerCase().includes(searchExpression.toLowerCase())){
+                      suggestions.push(suggestion)
+                      $("#suggestions").append("<span class='suggest'>"+suggestion+"</span>")
+                    }
+                  }
+                }
+              }
+
+            }
+          })
+      }
+	})
+
+  $("#btn-search").on("click", function(e){
+    e.preventDefault();
+    search();
+  })
+
+  $("body").on("click","#show-filters",function(){
+    $(".advance-search").toggleClass("hide-search")
+  })
+  $("body").on("click",".suggest",function(){
+    $("#search").val($(this).text())
+    $("#suggestions").html("")
+  })
+
+
+    </script>
+  </body><!-- This templates was made by Colorlib (https://colorlib.com) -->
+</html>
